@@ -1,0 +1,6 @@
+# dune init proj plaintext2epub
+# OCAMLPARAM: unset
+# Shared cache: enabled-except-user-rules
+# Shared cache location: /Users/josh/.cache/dune/db
+# Workspace root: /Users/josh/Documents/GitHub/plaintext-to-epub/plaintext2epub
+# Auto-detected concurrency: 12

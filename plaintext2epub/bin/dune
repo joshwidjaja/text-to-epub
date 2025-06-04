@@ -1,0 +1,4 @@
+(executable
+ (public_name plaintext2epub)
+ (name main)
+ (libraries plaintext2epub))
