@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/plaintext2epub/META"
+  "_build/install/default/lib/plaintext2epub/dune-package"
+  "_build/install/default/lib/plaintext2epub/opam"
+]
+bin: [
+  "_build/install/default/bin/plaintext2epub"
+]
