@@ -33,7 +33,7 @@ let () =
     ("-o", Arg.Set_string outfile, "Output EPUB name (default: book.epub)");
   ] in
   Arg.parse speclist (fun s -> infile := s) "usage: plaintext2epub [-o out.epub] input.txt";
-  if !infile = "" then (Arg.usage speclist "missing input"; exit 1)
+  if !infile = "" then (Arg.usage speclist "missing input"; exit 1);
 
   (* --- 2. Setup temp dir --- *)
   let temp = Filename.concat (Filename.get_temp_dir_name ()) "pte_build" in
