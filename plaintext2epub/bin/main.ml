@@ -41,7 +41,19 @@ let () =
   run cmd;
 
   (* --- 3. Read plaintext & generate chapter xhtml --- *)
-  let lines = Stdlib.input_lines (open_in !infile) in
+  let read_lines path = 
+    let ic = open_in_bin path in
+    let rec aux acc = 
+      match input_line ic with
+      | line -> aux (line :: acc)
+      | exception End_of_file ->
+        close_in ic;
+        List.rev acc
+    in
+    aux []
+  in
+  
+  let lines = read_lines !infile in
   write (temp ^ "/OEBPS/Text/chapter01.xhtml") (xhtml_of_lines lines);
 
   (* --- 4. Static support files --- *)
