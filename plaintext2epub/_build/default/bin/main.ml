@@ -13,8 +13,8 @@ let xhtml_of_lines lines =
   let body = lines
   |> List.map (fun l -> Printf.sprintf " <p>%s</p>" (String.escaped l))
   |> String.concat "\n" in
-  Printf.sprintf {|<?xml version="1.0 encoding="utf-8"?>
-  <html xmlns="http://www.w3.org/1999/xhtml lang="en">
+  Printf.sprintf {|<?xml version="1.0" encoding="utf-8"?>
+  <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
     <head>
         <title>Chapter 1</title>
         <meta charset="utf-8" />
@@ -36,7 +36,8 @@ let () =
   if !infile = "" then (Arg.usage speclist "missing input"; exit 1);
 
   (* --- 2. Setup temp dir --- *)
-  let temp = Filename.concat (Filename.get_temp_dir_name ()) "pte_build" in
+  let parent_dir = Filename.dirname (Sys.getcwd ()) in
+  let temp = Filename.concat parent_dir "pte_build" in
   let cmd = Printf.sprintf "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS/Text" temp temp temp in
   run cmd;
 
@@ -52,9 +53,9 @@ let () =
     in
     aux []
   in
-  
+
   let lines = read_lines !infile in
-  write (temp ^ "/OEBPS/Text/chapter01.xhtml") (xhtml_of_lines lines);
+  write (temp ^ "/OEBPS/chapter01.xhtml") (xhtml_of_lines lines);
 
   (* --- 4. Static support files --- *)
   write (temp ^ "/mimetype") "application/epub+zip";
@@ -77,6 +78,7 @@ let () =
         <dc:identifier id="bookid">urn:uuid:12345678-1234-1234-1234-123456789abc</dc:identifier>
         <dc:title>Output</dc:title>
         <dc:language>en</dc:language>
+        <meta property="dcterms:modified">2025-06-12T03:15:00Z</meta>
     </metadata>
 
     <manifest>
@@ -90,23 +92,26 @@ let () =
     </spine>
 </package>|};
 
-write (temp ^ "/OEBPS/nav.xhtml")
-{|<?xml version="1.0" encoding="UTF-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
-    <head>
+  write (temp ^ "/OEBPS/nav.xhtml")
+  {|<?xml version="1.0" encoding="UTF-8"?>
+  <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en">
+      <head>
         <title>Contents</title>
-        <meta charset="UTF-8"/>
-        <meta name="viewport" content="width=device-width"/>
-    </head>
-    <body>
-        <nav epub:type="toc" id="toc">
-            <h2>Contents</h2>
-            <ol>
-                <li><a href="chapter01.xhtml">Test</a></li>
-            </ol>
-        </nav>
-    </body>
-</html>|};
+          <meta charset="UTF-8"/>
+          <meta name="viewport" content="width=device-width"/>
+      </head>
+      <body>
+          <nav epub:type="toc" id="toc">
+              <h2>Contents</h2>
+              <ol>
+                  <li><a href="chapter01.xhtml">Test</a></li>
+              </ol>
+          </nav>
+      </body>
+  </html>|};
+
+  write (temp ^ "/OEBPS/stylesheet.css") ("");
+
 
   (* --- 5. Zip + validate --- *)
   let cwd = Sys.getcwd () in
