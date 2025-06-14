@@ -4,5 +4,6 @@ lib: [
   "_build/install/default/lib/plaintext2epub/opam"
 ]
 bin: [
+  "_build/install/default/bin/markdown2epub"
   "_build/install/default/bin/plaintext2epub"
 ]
