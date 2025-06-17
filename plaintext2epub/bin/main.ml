@@ -38,7 +38,7 @@ let () =
   (* --- 2. Setup temp dir --- *)
   let parent_dir = Filename.dirname (Sys.getcwd ()) in
   let temp = Filename.concat parent_dir "pte_build" in
-  let cmd = Printf.sprintf "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS/Text" temp temp temp in
+  let cmd = Printf.sprintf "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS" temp temp temp in
   run cmd;
 
   (* --- 3. Read plaintext & generate chapter xhtml --- *)
