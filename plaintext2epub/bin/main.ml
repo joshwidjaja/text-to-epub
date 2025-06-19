@@ -90,7 +90,7 @@ let () =
     <spine page-progression-direction="ltr">
         <itemref idref="chapter1"/>
     </spine>
-</package>|};
+  </package>|};
 
   write (temp ^ "/OEBPS/nav.xhtml")
   {|<?xml version="1.0" encoding="UTF-8"?>
