@@ -1,4 +1,5 @@
 open Printf
+open Omd
 
 let run cmd = 
   let code = Sys.command cmd in
@@ -8,6 +9,20 @@ let run cmd =
 let write path contents = 
   let oc = open_out_bin path in
   output_string oc contents; close_out oc
+
+let xhtml_of_md md_string = 
+  let body_frag = Omd.to_html (Omd.of_string md_string) in
+  Printf.sprintf {||<?xml version="1.0" encoding="utf-8"?>
+  <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+    <head>
+      <title>Chapter 1</title>
+      <meta charset="utf-8"/>
+      <link rel="stylesheet" type="text/css" href="stylesheet.css"/>
+    </head>
+    <body>
+      %s
+    </body>
+  </html>||} body_frag
 
 let () =
   (* --- 1. CLI parsing --- *)
@@ -26,6 +41,8 @@ let () =
   run cmd;
 
   (* --- 3. Generate chapter xhtml --- *)
+  let md = In_channel.with_open_bin !infile In_channel.input_all in
+  write (temp ^ "/OEBPS/chapter01.xhtml") (xhtml_of_md md);
 
   (* --- 4. Static support files --- *)
   write (temp ^ "/mimetype") "application/epub+zip";
