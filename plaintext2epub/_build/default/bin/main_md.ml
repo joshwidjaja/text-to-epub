@@ -1,5 +1,4 @@
 open Printf
-open Omd
 
 let run cmd = 
   let code = Sys.command cmd in
