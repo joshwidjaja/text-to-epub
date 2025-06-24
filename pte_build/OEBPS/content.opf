@@ -20,4 +20,4 @@
     <spine page-progression-direction="ltr">
         <itemref idref="chapter1"/>
     </spine>
-</package>
+  </package>

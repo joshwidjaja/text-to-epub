@@ -11,7 +11,7 @@ let write path contents =
 
 let xhtml_of_md md_string = 
   let body_frag = Omd.to_html (Omd.of_string md_string) in
-  Printf.sprintf {||<?xml version="1.0" encoding="utf-8"?>
+  Printf.sprintf {|<?xml version="1.0" encoding="utf-8"?>
   <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
     <head>
       <title>Chapter 1</title>
@@ -21,7 +21,7 @@ let xhtml_of_md md_string =
     <body>
       %s
     </body>
-  </html>||} body_frag
+  </html>|} body_frag
 
 let () =
   (* --- 1. CLI parsing --- *)

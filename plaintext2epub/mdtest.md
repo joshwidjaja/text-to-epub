@@ -35,10 +35,6 @@ _You **can** combine them_
     1. Item 3a
     2. Item 3b
 
-## Images
-
-![This is an alt text.](/image/sample.webp "This is a sample image.")
-
 ## Links
 
 You may be using [Markdown Live Preview](https://markdownlivepreview.com/).
