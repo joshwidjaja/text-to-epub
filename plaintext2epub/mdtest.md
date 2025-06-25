@@ -45,13 +45,6 @@ You may be using [Markdown Live Preview](https://markdownlivepreview.com/).
 >
 >> Markdown is often used to format readme files, for writing messages in online discussion forums, and to create rich text using a plain text editor.
 
-## Tables
-
-| Left columns  | Right columns |
-| ------------- |:-------------:|
-| left foo      | right foo     |
-| left bar      | right bar     |
-| left baz      | right baz     |
 
 ## Blocks of code
 
