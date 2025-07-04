@@ -6,4 +6,5 @@ lib: [
 bin: [
   "_build/install/default/bin/markdown2epub"
   "_build/install/default/bin/plaintext2epub"
+  "_build/install/default/bin/text2epub"
 ]

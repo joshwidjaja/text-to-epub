@@ -1,4 +1,6 @@
 (lang dune 3.19)
 (name plaintext2epub)
 (sections (lib .) (bin ../../bin))
-(files (lib (META dune-package opam)) (bin (markdown2epub plaintext2epub)))
+(files
+ (lib (META dune-package opam))
+ (bin (markdown2epub plaintext2epub text2epub)))

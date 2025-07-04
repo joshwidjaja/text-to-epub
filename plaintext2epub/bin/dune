@@ -1,4 +1,4 @@
 (executables
- (public_names plaintext2epub markdown2epub)
- (names main main_md)
- (libraries plaintext2epub omd))
+ (public_names text2epub plaintext2epub markdown2epub)
+ (names main_merged main main_md)
+ (libraries plaintext2epub omd str))

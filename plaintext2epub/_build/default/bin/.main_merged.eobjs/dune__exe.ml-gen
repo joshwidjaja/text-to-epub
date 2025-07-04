@@ -5,3 +5,6 @@ module Main = Dune__exe__Main
 
 (** @canonical Dune__exe.Main_md *)
 module Main_md = Dune__exe__Main_md
+
+(** @canonical Dune__exe.Main_merged *)
+module Main_merged = Dune__exe__Main_merged

@@ -4,10 +4,26 @@ let run cmd =
   let code = Sys.command cmd in
   if code <> 0 then
     (eprintf "Command failed (%d): %s\n%!" code cmd; exit code)
-
+  
 let write path contents = 
   let oc = open_out_bin path in
   output_string oc contents; close_out oc
+
+let xhtml_of_lines lines =
+  let body = lines
+  |> List.map (fun l -> Printf.sprintf " <p>%s</p>" (String.escaped l))
+  |> String.concat "\n" in
+  Printf.sprintf {|<?xml version="1.0" encoding="utf-8"?>
+  <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+    <head>
+        <title>Chapter 1</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width" />
+    </head>
+    <body>
+      %s
+    </body>
+  </html>|} body
 
 let xhtml_of_md md_string = 
   let body_frag = Omd.to_html (Omd.of_string md_string) in
@@ -23,6 +39,21 @@ let xhtml_of_md md_string =
     </body>
   </html>|} body_frag
 
+(* --- Chapter abstraction --- *)
+module type SOURCE_WITH_SPLIT = sig
+  type source (* the chunk of data being handled *)
+  val split: source -> source list
+  val to_xhtml: source -> string
+end
+
+module PlainText: SOURCE_WITH_SPLIT = struct
+  type source = string list
+end
+
+module Markdown: SOURCE_WITH_SPLIT = struct
+  type source = string
+end
+
 let () =
   (* --- 1. CLI parsing --- *)
   let infile = ref "" in
@@ -30,7 +61,7 @@ let () =
   let speclist = [
     ("-o", Arg.Set_string outfile, "Output EPUB name (default: book.epub)");
   ] in
-  Arg.parse speclist (fun s -> infile := s) "usage: markdown2epub [-o out.epub] input.md";
+  Arg.parse speclist (fun s -> infile := s) "usage: plaintext2epub [-o out.epub] input.(txt|md)";
   if !infile = "" then (Arg.usage speclist "missing input"; exit 1);
 
   (* --- 2. Setup temp dir --- *)
@@ -39,9 +70,23 @@ let () =
   let cmd = Printf.sprintf "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS" temp temp temp in
   run cmd;
 
-  (* --- 3. Generate chapter xhtml --- *)
-  let md = In_channel.with_open_bin !infile In_channel.input_all in
-  write (temp ^ "/OEBPS/chapter01.xhtml") (xhtml_of_md md);
+  (* --- 3. Read plaintext & generate chapter xhtml --- *)
+  let chapter_xhtml =
+    match String.lowercase_ascii (Filename.extension !infile) with
+    | ".md" ->
+      let md = In_channel.with_open_bin !infile In_channel.input_all in
+      xhtml_of_md md
+    | _ ->
+      let ic = open_in_bin !infile in
+      let rec read_lines acc = 
+        match input_line ic with
+        | line -> read_lines (line :: acc)
+        | exception End_of_file -> close_in ic; List.rev acc
+      in
+      xhtml_of_lines (read_lines [])
+
+  in
+  write (temp ^ "/OEBPS/chapter01.xhtml") chapter_xhtml;
 
   (* --- 4. Static support files --- *)
   write (temp ^ "/mimetype") "application/epub+zip";
@@ -52,7 +97,7 @@ let () =
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
   </container>|};
-
+  
   write (temp ^ "/OEBPS/content.opf")
   {|<?xml version="1.0" encoding="UTF-8"?>
   <package version="3.0"
@@ -97,6 +142,7 @@ let () =
   </html>|};
 
   write (temp ^ "/OEBPS/stylesheet.css") ("");
+
 
   (* --- 5. Zip + validate --- *)
   let cwd = Sys.getcwd () in
