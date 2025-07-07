@@ -83,7 +83,114 @@ module Markdown: SOURCE_WITH_SPLIT = struct
         else (Buffer.add_string buf (l ^ "\n"); acc))
       [] lines
     |> flush |> List.rev
+
   let to_xhtml md = xhtml_of_md md
+end
+
+module GenEPub (S: SOURCE_WITH_SPLIT) = struct
+  let build ~(title: string) ~(outfile: string) (doc: S.source) =
+    (* --- 2. Setup temp dir --- *)
+    let parent_dir = Filename.dirname (Sys.getcwd ()) in
+    let tmp = Filename.concat parent_dir "pte_build" in
+    run (Printf.sprintf
+      "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS"
+      tmp tmp tmp);
+
+    let meta = Filename.concat tmp "META-INF" in
+    let oebps = Filename.concat tmp "OEBPS" in
+
+    write (Filename.concat tmp "mimetype") "application/epub+zip";
+
+    write (Filename.concat meta "container.xml")
+      {|<?xml version="1.0" encoding="UTF-8"?>
+  <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+  </container>|};
+
+    (* --- 3. Generate chapter xhtml --- *)
+    let chapters: S.source list = S.split doc in
+    List.iteri
+      (fun idx chap ->
+        let fname = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+        let path = Filename.concat oebps fname in
+        write path (S.to_xhtml chap))
+      chapters;
+    
+    (* --- 4. DYNAMIC support files --- *)
+    let nav_items =
+      List.mapi
+        (fun idx _ ->
+          let href = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+          Printf.sprintf "<li><a href=\"%s\">Chapter&nbsp;%d</a></li>"
+                          href (idx + 1))
+        chapters
+      |> String.concat "\n"
+    in
+    write (Filename.concat oebps "nav.xhtml")
+      (Printf.sprintf {|
+      <?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>%s</title></head>
+  <body>
+    <nav epub:type="toc" id="toc">
+      <ol>
+%s
+      </ol>
+    </nav>
+  </body>
+</html>|} title nav_items);
+
+let uuid =
+  let g = Uuidm.v4_gen (Random.State.make_self_init ()) in
+  Uuidm.to_string (g ())
+in
+let manifest, spine =
+  List.mapi
+    (fun idx _ ->
+      let id = Printf.sprintf "c%02d" (idx + 1) in
+      let href = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+      (Printf.sprintf
+        {|<item id="%s" href="%s" media-type="application/xhtml+xml"/>|} id href,
+      Printf.sprintf {|<itemref idref="%s"/>|} id))
+    chapters
+  |> List.split
+in
+let opf =
+  Printf.sprintf {|
+<?xml version="1.0" encoding="utf-8"?>
+<package version="3.0"
+         xmlns="http://www.idpf.org/2007/opf"
+         unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:%s</dc:identifier>
+    <dc:title>%s</dc:title>
+    <dc:language>en</dc:language>
+  </metadata>
+  <manifest>
+%s
+    <item id="nav" href="nav.xhtml"
+          media-type="application/xhtml+xml" properties="nav"/>
+  </manifest>
+  <spine>
+%s
+  </spine>
+</package>|}
+  uuid title
+  (String.concat "\n" manifest)
+  (String.concat "\n" spine)
+in
+write (Filename.concat oebps "content.opf") opf;
+
+(* --- 5. Zip + validate --- *)
+let abs_out = Filename.concat (Sys.getcwd ()) outfile in
+run (Printf.sprintf
+      "cd %s && \
+      zip -X0 %s mimetype && \
+      zip -r9D %s META-INF OEBPS"
+      tmp abs_out abs_out)
 end
 
 let () =

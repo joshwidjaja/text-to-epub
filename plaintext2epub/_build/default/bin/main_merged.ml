@@ -48,10 +48,106 @@ end
 
 module PlainText: SOURCE_WITH_SPLIT = struct
   type source = string list
+
+  (* split at \f (form-feed) *)
+  let split (doc: string list) =
+    let rec aux current acc = function
+    | [] -> List.rev (List.rev current :: acc)
+    | "" :: rest -> aux [] (List.rev current :: acc) rest
+    | line :: rest when String.starts_with ~prefix:"\012" line
+      -> aux [] (List.rev current :: acc) rest
+    | line :: rest -> aux (line :: current) acc rest
+    in
+    aux [] [] doc
+  
+  let to_xhtml lines = xhtml_of_lines lines
 end
 
 module Markdown: SOURCE_WITH_SPLIT = struct
   type source = string
+
+  (* split at H1 headings *)
+  let split (doc: string) = 
+    let re = Str.regexp "^# " in
+    let buf = Buffer.create 256 in
+    let flush acc =
+      let frag = Buffer.contents buf in
+      Buffer.clear buf;
+      if frag = "" then acc else frag :: acc
+    in
+    let lines = String.split_on_char '\n' doc in
+    List.fold_left
+      (fun acc l ->
+        if Str.string_match re l 0
+        then (Buffer.add_string buf (l ^ "\n"); flush acc)
+        else (Buffer.add_string buf (l ^ "\n"); acc))
+      [] lines
+    |> flush |> List.rev
+
+  let to_xhtml md = xhtml_of_md md
+end
+
+module GenEPub (S: SOURCE_WITH_SPLIT) = struct
+  let build ~(title: string) ~(outfile: string) (doc: S.source) =
+    (* --- 2. Setup temp dir --- *)
+    let parent_dir = Filename.dirname (Sys.getcwd ()) in
+    let tmp = Filename.concat parent_dir "pte_build" in
+    run (Printf.sprintf
+      "rm -rf %s && mkdir -p %s/META-INF %s/OEBPS"
+      tmp tmp tmp);
+
+    let meta = Filename.concat tmp "META-INF" in
+    let oebps = Filename.concat tmp "OEBPS" in
+
+    write (Filename.concat tmp "mimetype") "application/epub+zip";
+
+    write (Filename.concat meta "container.xml")
+      {|<?xml version="1.0" encoding="UTF-8"?>
+  <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+  </container>|};
+
+    (* --- 3. Generate chapter xhtml --- *)
+    let chapters: S.source list = S.split doc in
+    List.iteri
+      (fun idx chap ->
+        let fname = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+        let path = Filename.concat oebps fname in
+        write path (S.to_xhtml chap))
+      chapters;
+    
+    (* --- 4. DYNAMIC support files --- *)
+    let nav_items =
+      List.mapi
+        (fun idx _ ->
+          let href = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+          Printf.sprintf "<li><a href=\"%s\">Chapter&nbsp;%d</a></li>"
+                          href (idx + 1))
+        chapters
+      |> String.concat "\n"
+    in
+    write (Filename.concat oebps "nav.xhtml")
+      (Printf.sprintf {|
+      <?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head><title>%s</title></head>
+  <body>
+    <nav epub:type="toc" id="toc">
+      <ol>
+%s
+      </ol>
+    </nav>
+  </body>
+</html>|} title nav_items);
+
+let uuid =
+  let g = Uuidm.v4_gen (Random.State.make_self_init ()) in
+  Uuidm.to_string (g ())
+in
+let manifest, spine
 end
 
 let () =
