@@ -107,6 +107,8 @@ module GenEPub (S: SOURCE_WITH_SPLIT) = struct
 
     write (Filename.concat tmp "mimetype") "application/epub+zip";
 
+    write (Filename.concat oebps "stylesheet.css") "";
+
     write (Filename.concat meta "container.xml")
       {|<?xml version="1.0" encoding="UTF-8"?>
   <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -177,6 +179,7 @@ let opf =
 %s
     <item id="nav" href="nav.xhtml"
           media-type="application/xhtml+xml" properties="nav"/>
+    <item id="style" href="stylesheet.css" media-type="text/css" />
   </manifest>
   <spine>
 %s
