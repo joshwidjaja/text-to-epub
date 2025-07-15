@@ -42,12 +42,23 @@ let xhtml_of_md md_string =
 (* --- Chapter abstraction --- *)
 module type SOURCE_WITH_SPLIT = sig
   type source (* the chunk of data being handled *)
+  val read_file: string -> source
   val split: source -> source list
   val to_xhtml: source -> string
 end
 
 module PlainText: SOURCE_WITH_SPLIT with type source = string list = struct
   type source = string list
+
+  let read_file path =
+    let ic = open_in path in
+    let rec gather acc =
+      match input_line ic with
+      | line -> gather (line :: acc)
+      | exception End_of_file ->
+        close_in ic; List.rev acc
+    in
+    gather []
 
   (* split at \f (form-feed) *)
   let split (doc: string list) =
@@ -65,6 +76,9 @@ end
 
 module Markdown: SOURCE_WITH_SPLIT with type source = string = struct
   type source = string
+
+  let read_file path =
+    In_channel.with_open_bin path In_channel.input_all
 
   (* split at H1 headings *)
   let split (doc: string) = 
@@ -93,7 +107,7 @@ module GenEPub (S: SOURCE_WITH_SPLIT) = struct
     Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ"
       (tm.tm_year + 1900) (tm.tm_mon + 1) tm.tm_mday
       tm.tm_hour tm.tm_min tm.tm_sec
-      
+
   let build ~(title: string) ~(outfile: string) (doc: S.source) =
     (* --- 2. Setup temp dir --- *)
     let parent_dir = Filename.dirname (Sys.getcwd ()) in
@@ -149,23 +163,23 @@ module GenEPub (S: SOURCE_WITH_SPLIT) = struct
   </body>
 </html>|} title nav_items);
 
-let uuid =
-  let g = Uuidm.v4_gen (Random.State.make_self_init ()) in
-  Uuidm.to_string (g ())
-in
-let manifest, spine =
-  List.mapi
-    (fun idx _ ->
-      let id = Printf.sprintf "c%02d" (idx + 1) in
-      let href = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
-      (Printf.sprintf
-        {|<item id="%s" href="%s" media-type="application/xhtml+xml"/>|} id href,
-      Printf.sprintf {|<itemref idref="%s"/>|} id))
-    chapters
-  |> List.split
-in
-let opf =
-  Printf.sprintf {|<?xml version="1.0" encoding="utf-8"?>
+    let uuid =
+      let g = Uuidm.v4_gen (Random.State.make_self_init ()) in
+      Uuidm.to_string (g ())
+    in
+    let manifest, spine =
+      List.mapi
+        (fun idx _ ->
+          let id = Printf.sprintf "c%02d" (idx + 1) in
+          let href = Printf.sprintf "chapter%02d.xhtml" (idx + 1) in
+          (Printf.sprintf
+            {|<item id="%s" href="%s" media-type="application/xhtml+xml"/>|} id href,
+          Printf.sprintf {|<itemref idref="%s"/>|} id))
+        chapters
+      |> List.split
+    in
+    let opf =
+      Printf.sprintf {|<?xml version="1.0" encoding="utf-8"?>
 <package version="3.0"
          xmlns="http://www.idpf.org/2007/opf"
          unique-identifier="bookid">
@@ -185,23 +199,27 @@ let opf =
 %s
   </spine>
 </package>|}
-  uuid title
-  (get_time ())
-  (String.concat "\n" manifest)
-  (String.concat "\n" spine)
-in
-write (Filename.concat oebps "content.opf") opf;
+      uuid title
+      (get_time ())
+      (String.concat "\n" manifest)
+      (String.concat "\n" spine)
+    in
+    write (Filename.concat oebps "content.opf") opf;
 
-(* --- 5. Zip + validate --- *)
-let abs_out = Filename.concat (Sys.getcwd ()) outfile in
-run (Printf.sprintf
-      "cd %s && \
-      zip -X0 %s mimetype && \
-      zip -r9D %s META-INF OEBPS"
-      tmp abs_out abs_out);
+    (* --- 5. Zip + validate --- *)
+    let abs_out = Filename.concat (Sys.getcwd ()) outfile in
+    run (Printf.sprintf
+          "cd %s && \
+          zip -X0 %s mimetype && \
+          zip -r9D %s META-INF OEBPS"
+          tmp abs_out abs_out);
 
-run (Printf.sprintf "epubcheck %s" abs_out);
-end
+    run (Printf.sprintf "epubcheck %s" abs_out)
+  
+  let build_file ~title ~outfile path =
+    let doc = S.read_file path in
+    build ~title ~outfile doc
+  end
 
 let () =
   (* --- 1. CLI parsing --- *)
@@ -217,22 +235,10 @@ let () =
   if !infile = "" then (Arg.usage speclist usage; exit 1);
 
   (* --- 2. Check for file type --- *)
-  if Filename.check_suffix !infile ".md" then begin
-    let raw_md =
-      In_channel.with_open_bin !infile In_channel.input_all
-    in
-    let module B = GenEPub (Markdown) in
-    B.build ~title:!title ~outfile:!outfile raw_md
-  end else begin
-    let ic = open_in !infile in
-    let rec gather acc =
-      match input_line ic with
-      | line -> gather (line :: acc)
-      | exception End_of_file ->
-        close_in ic;
-        List.rev acc
-    in
-    let raw_txt = gather [] in
-    let module B = GenEPub (PlainText) in
-    B.build ~title:!title ~outfile:!outfile raw_txt
-  end
+  (* --- note: try abstracting input routines for source ---*)
+  if Filename.check_suffix !infile ".md" then
+    (let module B = GenEPub (Markdown) in
+    B.build_file ~title:!title ~outfile:!outfile !infile)
+  else
+    (let module B = GenEPub (PlainText) in
+    B.build_file ~title:!title ~outfile:!outfile !infile)
