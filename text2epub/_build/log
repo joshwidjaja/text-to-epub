@@ -1,8 +1,8 @@
-# dune exec text2epub mdtest.md
+# dune exec text2epub TEST.md
 # OCAMLPARAM: unset
 # Shared cache: enabled-except-user-rules
 # Shared cache location: /Users/josh/.cache/dune/db
-# Workspace root: /Users/josh/Documents/GitHub/plaintext-to-epub/plaintext2epub
+# Workspace root: /Users/josh/Documents/GitHub/plaintext-to-epub/text2epub
 # Auto-detected concurrency: 12
 # Dune context:
 #  { name = "default"
@@ -13,4 +13,4 @@
 #  ; build_dir = In_build_dir "default"
 #  ; instrument_with = []
 #  }
-$ /Users/josh/.opam/ocaml-variants/bin/ocamlc.opt -config > /var/folders/hn/y17kwpg14k5g6y87pvyj25280000gp/T/dune_81ebfc_output
+$ /Users/josh/.opam/ocaml-variants/bin/ocamlc.opt -config > /var/folders/hn/y17kwpg14k5g6y87pvyj25280000gp/T/dune_45e5d8_output

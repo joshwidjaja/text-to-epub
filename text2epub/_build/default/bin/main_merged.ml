@@ -93,7 +93,10 @@ module Markdown: SOURCE_WITH_SPLIT with type source = string = struct
     List.fold_left
       (fun acc l ->
         if Str.string_match re l 0
-        then (Buffer.add_string buf (l ^ "\n"); flush acc)
+        then 
+          let acc = flush acc in
+          Buffer.add_string buf (l ^ "\n");
+          acc
         else (Buffer.add_string buf (l ^ "\n"); acc))
       [] lines
     |> flush |> List.rev
